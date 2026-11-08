@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box} body{margin:0;overflow:hidden;background:#eaf2f8;font-family:Arial,sans-serif}
+#scene{width:100%;height:700px}
+#panel{position:absolute;top:18px;left:18px;width:255px;padding:17px;border:1px solid #cbdce8;border-radius:15px;color:#24364b;background:rgba(255,255,255,.94);box-shadow:0 8px 24px rgba(40,70,100,.12);z-index:5;pointer-events:none}
+#panel h2{font-size:16px;margin:0 0 9px;color:#193c5a}#panel p{font-size:12px;color:#526c82;line-height:1.55;margin:7px 0}
+#tag{position:absolute;top:18px;right:20px;background:#f5b942;color:#172536;font-weight:bold;letter-spacing:2px;padding:8px 13px;border-radius:6px}
+#hint{position:absolute;bottom:17px;left:50%;transform:translateX(-50%);color:#c3d5e6;background:rgba(255,255,255,.94);color:#526c82;border:1px solid #cbdce8;padding:9px 15px;border-radius:20px;font-size:12px;white-space:nowrap;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div id="panel"><h2>🏙️ FINANCE CORE</h2><p>Welcome to SME FinancePilot.</p><p>Click a building to inspect its specialised agent.</p><p>Five agents · One financial intelligence system.</p></div>
+<div id="tag">DEMO</div><div id="hint">Isometric view · Scroll to zoom · Click a building</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const el=document.getElementById('scene'),scene=new THREE.Scene();
+scene.background=new THREE.Color('#eaf2f8');scene.fog=new THREE.Fog('#eaf2f8',30,58);
+const frustum=18, aspect=el.clientWidth/el.clientHeight;const camera=new THREE.OrthographicCamera(-frustum*aspect,frustum*aspect,frustum,-frustum,.1,120);camera.position.set(22,25,22);camera.zoom=1.35;camera.lookAt(0,0,0);camera.updateProjectionMatrix();
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(el.clientWidth,el.clientHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;el.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,1,0);controls.enableRotate=false;controls.minZoom=.8;controls.maxZoom=2.1;
+scene.add(new THREE.HemisphereLight(0xc7e8ff,0x24334a,2.1));
+const sun=new THREE.DirectionalLight(0xffffff,3.4);sun.position.set(9,16,10);sun.castShadow=true;scene.add(sun);
+const glow=new THREE.PointLight(0xffd77a,28,20);glow.position.set(0,4,0);scene.add(glow);
+const mat=(c,m=.4,r=.28)=>new THREE.MeshStandardMaterial({color:c,metalness:m,roughness:r});
+const floor=new THREE.Mesh(new THREE.CylinderGeometry(12,12,.5,8),mat('#d6e5ef',.15,.65));floor.position.y=-.3;floor.receiveShadow=true;scene.add(floor);
+const roadMat=new THREE.MeshBasicMaterial({color:'#63bdb5'});
+function road(x,z){const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(0,-.025,0),new THREE.Vector3(x*.45,-.025,z*.45),new THREE.Vector3(x,-.025,z)]);scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,30,.045,8,false),roadMat));}
+const selectable=[];
+function building(cfg){
+ const g=new THREE.Group();g.position.set(cfg.x,0,cfg.z);g.userData={name:cfg.name,type:cfg.type};
+ const base=new THREE.Mesh(new THREE.BoxGeometry(2.8,.24,2.8),mat('#304b63'));base.position.y=.12;g.add(base);
+ const tower=new THREE.Mesh(new THREE.BoxGeometry(cfg.w||1.65,cfg.h, cfg.d||1.65),mat(cfg.color,.55,.22));tower.position.y=cfg.h/2+.24;tower.castShadow=true;g.add(tower);
+ // bright horizontal window bands
+ for(let y=.55;y<cfg.h;y+=.62){const band=new THREE.Mesh(new THREE.BoxGeometry((cfg.w||1.65)+.035,.055,(cfg.d||1.65)+.035),new THREE.MeshBasicMaterial({color:cfg.glow}));band.position.y=y+.24;g.add(band);}
+ if(cfg.type==='finance'){const roof=new THREE.Mesh(new THREE.ConeGeometry(1.25,1.15,4),mat('#9bdfff',.6,.18));roof.position.y=cfg.h+1;roof.rotation.y=Math.PI/4;g.add(roof);const antenna=new THREE.Mesh(new THREE.CylinderGeometry(.035,.06,.8,8),mat('#e9c36b'));antenna.position.y=cfg.h+1.85;g.add(antenna);}
+ if(cfg.type==='cash'){const roof=new THREE.Mesh(new THREE.TorusGeometry(.9,.13,12,48),mat('#9effeb'));roof.rotation.x=Math.PI/2;roof.position.y=cfg.h+.48;g.add(roof);const canopy=new THREE.Mesh(new THREE.CylinderGeometry(1.05,.85,.18,32),mat('#147d78'));canopy.position.y=cfg.h+.15;g.add(canopy);}
+ if(cfg.type==='risk'){const dome=new THREE.Mesh(new THREE.SphereGeometry(1,24,16,0,Math.PI*2,0,Math.PI/2),mat('#ffb477'));dome.position.y=cfg.h+.24;g.add(dome);const rim=new THREE.Mesh(new THREE.TorusGeometry(1,.07,8,32),mat('#ffd09c'));rim.rotation.x=Math.PI/2;rim.position.y=cfg.h+.25;g.add(rim);}
+ if(cfg.type==='strategy'){const roof=new THREE.Mesh(new THREE.ConeGeometry(1.25,1.25,6),mat('#c6a6ff'));roof.position.y=cfg.h+.9;g.add(roof);const ring=new THREE.Mesh(new THREE.TorusGeometry(.72,.07,8,32),mat('#dfcaff'));ring.rotation.x=Math.PI/2;ring.position.y=cfg.h+.2;g.add(ring);}
+ if(cfg.type==='decision'){const roof=new THREE.Mesh(new THREE.OctahedronGeometry(.92),mat('#a3efb7'));roof.position.y=cfg.h+.85;g.add(roof);const pillars= new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,1.2,8),mat('#b6e9c5'));for(let a=0;a<4;a++){const p=pillars.clone();p.position.set(Math.cos(a*Math.PI/2)*.85,.85,Math.sin(a*Math.PI/2)*.85);g.add(p);}}
+ scene.add(g);selectable.push(g);road(cfg.x,cfg.z);
+}
+const configs=[
+{name:'FINANCE TOWER',type:'finance',x:-6,z:-4,h:3.8,w:1.55,d:1.55,color:'#2389c9',glow:'#b9eaff'},
+{name:'CASH FLOW HARBOUR',type:'cash',x:6,z:-4,h:2.7,color:'#16a98f',glow:'#9bffea'},
+{name:'RISK OBSERVATORY',type:'risk',x:-6,z:4,h:2.5,color:'#d47b43',glow:'#ffd0a4'},
+{name:'STRATEGY LAB',type:'strategy',x:6,z:4,h:3.1,color:'#8863c7',glow:'#e0caff'},
+{name:'DECISION PAVILION',type:'decision',x:0,z:7,h:2.4,color:'#329963',glow:'#b6f3c8'}];
+configs.forEach(building);
+const core=new THREE.Group();const plinth=new THREE.Mesh(new THREE.CylinderGeometry(1.75,2.05,.4,48),mat('#d7a63e',.7,.2));plinth.position.y=.1;core.add(plinth);
+const orb=new THREE.Mesh(new THREE.IcosahedronGeometry(.83,2),new THREE.MeshPhysicalMaterial({color:'#ffdc84',emissive:'#a96c17',emissiveIntensity:.75,metalness:.55,roughness:.12}));orb.position.y=1.45;core.add(orb);
+const halo=new THREE.Mesh(new THREE.TorusGeometry(1.28,.055,12,80),new THREE.MeshBasicMaterial({color:'#ffe19a'}));halo.rotation.x=Math.PI/2;halo.position.y=1.45;core.add(halo);scene.add(core);core.userData={name:'FINANCE CORE',type:'central'};selectable.push(core);
+const desc={central:'Central orchestrator: coordinates the five specialised agents and presents consolidated findings.',finance:'Finance Agent: analyses revenue, COGS, gross profit and operating surplus.',cash:'Cash Flow Agent: tracks actual cash received, cash paid, net cash flow and closing cash.',risk:'Risk Agent: flags cash pressure, high cost ratios and possible financial warning signs.',strategy:'Strategy Agent: compares illustrative cost-control and revenue-growth scenarios.',decision:'Decision Agent: prepares recommended actions and waits for SME owner approval.'};
+const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),panel=document.getElementById('panel');
+renderer.domElement.addEventListener('click',e=>{const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects(selectable.flatMap(g=>g.children),true);if(!hits.length)return;let o=hits[0].object;while(o&&!o.userData.name)o=o.parent;if(o&&o.userData.name){panel.innerHTML=`<h2>🏢 ${o.userData.name}</h2><p>${desc[o.userData.type]}</p><p>STATUS: READY FOR DEMO</p>`;}});
+const stars=[];for(let i=0;i<42;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(.035,8,8),new THREE.MeshBasicMaterial({color:'#6ee9e2'}));s.position.set((Math.random()-.5)*19,.2+Math.random()*3,(Math.random()-.5)*17);scene.add(s);stars.push(s);}
+window.addEventListener('resize',()=>{const a=el.clientWidth/el.clientHeight;camera.left=-frustum*a;camera.right=frustum*a;camera.top=frustum;camera.bottom=-frustum;camera.updateProjectionMatrix();renderer.setSize(el.clientWidth,el.clientHeight);});
+function animate(){requestAnimationFrame(animate);controls.update();orb.rotation.y+=.004;halo.rotation.z+=.005;renderer.render(scene,camera);}animate();
+</script>
+</body></html>
